@@ -12,10 +12,7 @@ FREQUENCY = 'Frequency'
 DOC_OCCURRENCES = 'Document Occurrences'
 
 
-# create count vectors of query and documents related to query
-def create_vectors(query):
-    vectorizer = CountVectorizer()
-
+def query_preprocessing(query):
     # lowered, tokenized, stemmed, stop words removed
     query = [term for term in
              [stemmer.stem(term) for term in regex.sub('', query.lower()).split()]
@@ -28,16 +25,18 @@ def create_vectors(query):
             q.append(term_ids[term])
         except KeyError:
             pass
-    query = ' '.join(q)
-    del q
+    return ' '.join(q)
+
+
+# create count vector of query and documents related to query
+def create_vectors(query):
+    vectorizer = CountVectorizer()
 
     # creating count vector of query
-    query_vector = vectorizer.fit_transform([query]).toarray()
-
-    unique_terms = vectorizer.get_feature_names()
+    query_vector = vectorizer.fit_transform([query]).toarray()[0]
 
     documents = {}
-    for term in unique_terms:
+    for term in vectorizer.get_feature_names():
         terms_index.seek(int(term_info.loc[term, OFFSET]))
         term_posting = terms_index.readline().rstrip().split('\t')
 
@@ -78,14 +77,22 @@ def create_vectors(query):
     return query_vector, documents_vectors
 
 
+def get_okapi_tf_vectors(vector, doc_len, avg_doc_len):
+    return vector / (vector + 0.5 + 1.5 * doc_len / avg_doc_len)
+
+
 def okapi_tf(query):
+    query = query_preprocessing(query)
     query_vector, documents_vectors = create_vectors(query)
-    print('okapi:', query)
+
+    query_vector = get_okapi_tf_vectors(query_vector, len(query_vector), 5)
+    documents_vectors = {key: get_okapi_tf_vectors(doc_vector, 5, 5) for key, doc_vector in documents_vectors.items()}
+
 
 
 def tf_tdf(query):
+    query = query_preprocessing(query)
     query_vector, documents_vectors = create_vectors(query)
-    print('tf-idf:', query)
 
 
 # parser = ArgumentParser()
@@ -113,10 +120,12 @@ regex = re.compile('[^a-z0-9 ]')
 topics = BeautifulSoup(topics, features='html5lib')
 topics = [topic.getText() for topic in topics.find_all('query')]
 
-create_vectors(topics[0])
+okapi_tf(topics[0])
 # if score_function == 'tf-idf':
-#     tf_tdf(topics)
+#     for topic in topics:
+#         tf_tdf(topic)
 # elif score_function == 'tf':
-#     okapi_tf(topics)
+#     for topic in topics:
+#         okapi_tf(topic)
 
 terms_index.close()
