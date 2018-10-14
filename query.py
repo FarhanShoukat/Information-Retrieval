@@ -78,12 +78,14 @@ def create_vectors(query):
     return query_vector, documents_vectors
 
 
-def okapi_tf(topic):
-    print('okapi:', topic)
+def okapi_tf(query):
+    query_vector, documents_vectors = create_vectors(query)
+    print('okapi:', query)
 
 
-def tf_tdf(topic):
-    print('tf-idf:', topic)
+def tf_tdf(query):
+    query_vector, documents_vectors = create_vectors(query)
+    print('tf-idf:', query)
 
 
 # parser = ArgumentParser()

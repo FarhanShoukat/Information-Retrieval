@@ -3,7 +3,9 @@
 /venv
 /doc_index.txt
 /docids.txt
+/reader(old).txt
 /stoplist.txt
-/term_inex.txt
+/term_index.txt
 term_info.txt
 termids.txt
+/topics.xml
