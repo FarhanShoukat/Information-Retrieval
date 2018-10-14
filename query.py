@@ -12,7 +12,10 @@ FREQUENCY = 'Frequency'
 DOC_OCCURRENCES = 'Document Occurrences'
 
 
-def query_preprocessing(query):
+# create count vectors of query and documents related to query
+def create_vectors(query):
+    vectorizer = CountVectorizer()
+
     # lowered, tokenized, stemmed, stop words removed
     query = [term for term in
              [stemmer.stem(term) for term in regex.sub('', query.lower()).split()]
@@ -25,14 +28,8 @@ def query_preprocessing(query):
             q.append(term_ids[term])
         except KeyError:
             pass
-    return ' '.join(q)
-
-
-# create count vectors of query and documents related to query
-def create_vectors(query):
-    vectorizer = CountVectorizer()
-
-    query = query_preprocessing(query)
+    query = ' '.join(q)
+    del q
 
     # creating count vector of query
     query_vector = vectorizer.fit_transform([query]).toarray()
