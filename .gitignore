@@ -1,0 +1,9 @@
+/.idea
+/corpus
+/venv
+/doc_index.txt
+/docids.txt
+/stoplist.txt
+/term_inex.txt
+term_info.txt
+termids.txt
