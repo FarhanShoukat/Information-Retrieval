@@ -3,7 +3,7 @@
 /venv
 /doc_index.txt
 /docids.txt
-/reader(old).txt
+/reader(old).py
 /stoplist.txt
 /term_index.txt
 term_info.txt

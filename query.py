@@ -88,12 +88,12 @@ def tf_tdf(query):
     print('tf-idf:', query)
 
 
-parser = ArgumentParser()
-parser.add_argument('--score', dest='score', help='name of scoring function (TF or TF-IDF)', metavar='SCORE', required=True)
-options = parser.parse_args()
-score_function = options.score.lower()
-if score_function != 'tf-idf' and score_function != 'tf':
-    print('Please select valid score function')
+# parser = ArgumentParser()
+# parser.add_argument('--score', dest='score', help='name of scoring function (TF or TF-IDF)', metavar='SCORE', required=True)
+# options = parser.parse_args()
+# score_function = options.score.lower()
+# if score_function != 'tf-idf' and score_function != 'tf':
+#     print('Please select valid score function')
 
 doc_ids = pd.read_csv('docids.txt', sep='\t', dtype=str, header=None, index_col=1).to_dict()[0]
 term_ids = pd.read_csv('termids.txt', sep='\t', dtype=str, header=None, index_col=1).to_dict()[0]
