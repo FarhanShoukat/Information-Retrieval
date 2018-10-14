@@ -30,22 +30,48 @@ def create_vectors(query):
         except KeyError:
             pass
     query = ' '.join(q)
+    del q
 
     # creating count vector of query
     query_vector = vectorizer.fit_transform([query]).toarray()
 
     unique_terms = vectorizer.get_feature_names()
 
-    terms_posting = []
+    documents = {}
     for term in unique_terms:
         terms_index.seek(int(term_info.loc[term, OFFSET]))
         term_posting = terms_index.readline().rstrip().split('\t')
+
+        # parsing posting list of term into numpy array of n * 2 where n is the total occurrence of term in corpus
         term_posting = np.array([[int(doc), int(pos)] for doc, pos in [x.split(':') for x in
                                                                        islice(term_posting, 1, len(term_posting))]])
+
+        # adding first position of posting list to respective document
+        try:
+            documents[str(term_posting[0, 0])].append(term)
+        except KeyError:
+            documents[str(term_posting[0, 0])] = [term]
+
+        # delta decoding and # adding terms to respective document list
         for i in range(1, len(term_posting)):
-            if term_posting[i, 0] == 0:
-                term_posting[i, 1] += term_posting[i - 1, 1]
+            # if term_posting[i, 0] == 0:
+            #     term_posting[i, 1] += term_posting[i - 1, 1]
             term_posting[i, 0] += term_posting[i - 1, 0]
+            try:
+                documents[str(term_posting[i, 0])].append(term)
+            except KeyError:
+                documents[str(term_posting[i, 0])] = [term]
+
+    # joining lists of documents containing term ids and converting dictionary to list for vectorizer
+    document_references = {}
+    d = []
+    for i, key in enumerate(documents):
+        d.append(' '.join(documents[key]))
+        document_references[key] = i
+    documents = d
+
+    # creating count vector of documents
+    documents = vectorizer.transform(documents).toarray()
 
 
 def okapi_tf(topic):
