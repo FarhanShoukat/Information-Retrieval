@@ -16,11 +16,11 @@ DOC_OCCURRENCES = 'Document Occurrences'
 # create count vectors of query and documents related to query
 def create_vectors(query):
     vectorizer = CountVectorizer()
-    # lowered, tokenized, stemmed
-    query = [stemmer.stem(term) for term in regex.sub('', query.lower()).split()]
 
-    # stop words removal
-    query = [term for term in query if term not in stop_words]
+    # lowered, tokenized, stemmed, stop words removed
+    query = [term for term in
+             [stemmer.stem(term) for term in regex.sub('', query.lower()).split()]
+             if term not in stop_words]
 
     # each term is converted to its id
     q = []
@@ -43,8 +43,8 @@ def create_vectors(query):
         term_posting = terms_index.readline().rstrip().split('\t')
 
         # parsing posting list of term into numpy array of n * 2 where n is the total occurrence of term in corpus
-        term_posting = np.array([[int(doc), int(pos)] for doc, pos in [x.split(':') for x in
-                                                                       islice(term_posting, 1, len(term_posting))]])
+        term_posting = np.array([[int(doc), int(pos)] for doc, pos in
+                                 [x.split(':') for x in islice(term_posting, 1, len(term_posting))]])
 
         # adding first position of posting list to respective document
         try:
@@ -72,6 +72,11 @@ def create_vectors(query):
 
     # creating count vector of documents
     documents = vectorizer.transform(documents).toarray()
+
+    # converting back to dictionary
+    documents_vectors = {key: documents[document_references[key]] for key in document_references}
+
+    return query_vector, documents_vectors
 
 
 def okapi_tf(topic):
