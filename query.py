@@ -4,7 +4,6 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import re
 import numpy as np
-from collections import Counter
 from sklearn.feature_extraction.text import CountVectorizer
 from itertools import islice
 
@@ -13,10 +12,7 @@ FREQUENCY = 'Frequency'
 DOC_OCCURRENCES = 'Document Occurrences'
 
 
-# create count vectors of query and documents related to query
-def create_vectors(query):
-    vectorizer = CountVectorizer()
-
+def query_preprocessing(query):
     # lowered, tokenized, stemmed, stop words removed
     query = [term for term in
              [stemmer.stem(term) for term in regex.sub('', query.lower()).split()]
@@ -29,8 +25,14 @@ def create_vectors(query):
             q.append(term_ids[term])
         except KeyError:
             pass
-    query = ' '.join(q)
-    del q
+    return ' '.join(q)
+
+
+# create count vectors of query and documents related to query
+def create_vectors(query):
+    vectorizer = CountVectorizer()
+
+    query = query_preprocessing(query)
 
     # creating count vector of query
     query_vector = vectorizer.fit_transform([query]).toarray()
