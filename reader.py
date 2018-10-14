@@ -39,7 +39,7 @@ def print_doc_info(doc_name):
         else:
             break
 
-    print('Listing for document:', doc)
+    print('Listing for document:', doc_name)
     print('DOCID:', doc_id)
     print('Distinct terms:', distinct_terms)
     print('Total terms:', total_terms)
@@ -64,14 +64,14 @@ def print_doc_term_info(doc_name, term_name):
     try:
         doc_id = doc_ids[doc_name]
     except KeyError:
-        print(doc, 'does not exit.')
+        print(doc_name, 'does not exit.')
         return None
 
     term_name = PorterStemmer().stem(term_name)
     try:
         term_id = term_ids[term_name]
     except KeyError:
-        print(term, 'does not exit.')
+        print(term_name, 'does not exit.')
         return None
 
     terms_index.seek(int(term_info.loc[term_id, OFFSET]))
