@@ -6,10 +6,14 @@ import re
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from itertools import islice
+import time
 
 OFFSET = 'Offset'
 FREQUENCY = 'Frequency'
 DOC_OCCURRENCES = 'Document Occurrences'
+# assumed
+DOC_LEN = 5
+AVG_DOC_LEN = 5
 
 
 def query_preprocessing(query):
@@ -61,38 +65,40 @@ def create_vectors(query):
                 documents[str(term_posting[i, 0])] = [term]
 
     # joining lists of documents containing term ids and converting dictionary to list for vectorizer
-    document_references = {}
+    doc_references = {}
     d = []
     for i, key in enumerate(documents):
         d.append(' '.join(documents[key]))
-        document_references[key] = i
+        doc_references[key] = i
     documents = d
 
     # creating count vector of documents
-    documents = vectorizer.transform(documents).toarray()
+    documents_vectors = vectorizer.transform(documents).toarray()
 
-    # converting back to dictionary
-    documents_vectors = {key: documents[document_references[key]] for key in document_references}
-
-    return query_vector, documents_vectors
+    return query_vector, doc_references, documents_vectors
 
 
-def get_okapi_tf_vectors(vector, doc_len, avg_doc_len):
+def get_okapi_tf_vector(vector, doc_len, avg_doc_len):
     return vector / (vector + 0.5 + 1.5 * doc_len / avg_doc_len)
 
 
 def okapi_tf(query):
     query = query_preprocessing(query)
-    query_vector, documents_vectors = create_vectors(query)
+    query_vector, doc_references, doc_vectors = create_vectors(query)
 
-    query_vector = get_okapi_tf_vectors(query_vector, len(query_vector), 5)
-    documents_vectors = {key: get_okapi_tf_vectors(doc_vector, 5, 5) for key, doc_vector in documents_vectors.items()}
+    # creating okapi-tf vectors of query and documents
+    query_vector = get_okapi_tf_vector(query_vector, len(query.split()), AVG_DOC_LEN)
+    doc_vectors = [get_okapi_tf_vector(doc_vector, DOC_LEN, AVG_DOC_LEN) for doc_vector in doc_vectors]
 
+    # finding cosine similarity scores of query with documents
+    query_vector_len = np.sqrt(query_vector.dot(query_vector))
+    doc_scores = [query_vector.dot(doc_vector) / (query_vector_len * np.sqrt(doc_vector.dot(doc_vector)))
+                  for doc_vector in doc_vectors]
 
 
 def tf_tdf(query):
     query = query_preprocessing(query)
-    query_vector, documents_vectors = create_vectors(query)
+    query_vector, doc_references, doc_vectors = create_vectors(query)
 
 
 # parser = ArgumentParser()
@@ -101,6 +107,7 @@ def tf_tdf(query):
 # score_function = options.score.lower()
 # if score_function != 'tf-idf' and score_function != 'tf':
 #     print('Please select valid score function')
+#     exit(-1)
 
 doc_ids = pd.read_csv('docids.txt', sep='\t', dtype=str, header=None, index_col=1).to_dict()[0]
 term_ids = pd.read_csv('termids.txt', sep='\t', dtype=str, header=None, index_col=1).to_dict()[0]
