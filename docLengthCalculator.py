@@ -7,5 +7,5 @@ for line in content:
     doc_len[line[0]] = doc_len.get(line[0], 0) + len(line) -2
 
 to_write = '\n'.join([doc + '\t' + str(length) for doc, length in doc_len.items()])
-with open('doc_length.txt', mode='w') as f:
+with open('doc_lengths.txt', mode='w') as f:
     f.write(to_write)

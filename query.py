@@ -6,14 +6,21 @@ import re
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from itertools import islice
+import statistics
 import time
 
 OFFSET = 'Offset'
 FREQUENCY = 'Frequency'
 DOC_OCCURRENCES = 'Document Occurrences'
-# assumed
-DOC_LEN = 5
-AVG_DOC_LEN = 5
+
+
+def get_term_posting(term):
+    terms_index.seek(int(term_info.loc[term, OFFSET]))
+    term_posting = terms_index.readline().rstrip().split('\t')
+
+    # parsing posting list of term into numpy array of n * 2 where n is the total occurrence of term in corpus
+    return np.array([[int(doc), int(pos)] for doc, pos in
+                     [x.split(':') for x in islice(term_posting, 1, len(term_posting))]])
 
 
 def query_preprocessing(query):
@@ -32,7 +39,7 @@ def query_preprocessing(query):
     return ' '.join(q)
 
 
-# create count vector of query and documents related to query
+# create count vectors of query and documents related to query
 def create_vectors(query):
     vectorizer = CountVectorizer()
 
@@ -41,12 +48,7 @@ def create_vectors(query):
 
     documents = {}
     for term in vectorizer.get_feature_names():
-        terms_index.seek(int(term_info.loc[term, OFFSET]))
-        term_posting = terms_index.readline().rstrip().split('\t')
-
-        # parsing posting list of term into numpy array of n * 2 where n is the total occurrence of term in corpus
-        term_posting = np.array([[int(doc), int(pos)] for doc, pos in
-                                 [x.split(':') for x in islice(term_posting, 1, len(term_posting))]])
+        term_posting = get_term_posting(term)
 
         # adding first position of posting list to respective document
         try:
@@ -78,17 +80,21 @@ def create_vectors(query):
     return query_vector, doc_references, documents_vectors
 
 
-def get_okapi_tf_vector(vector, doc_len, avg_doc_len):
-    return vector / (vector + 0.5 + 1.5 * doc_len / avg_doc_len)
+def get_okapi_tf_vector(vector, doc_len):
+    return vector / (vector + 0.5 + 1.5 * doc_len / AVG_DOC_LEN)
 
 
 def okapi_tf(query):
     query = query_preprocessing(query)
     query_vector, doc_references, doc_vectors = create_vectors(query)
 
+    reference_to_doc = {reference: int(doc) for doc, reference in doc_references.items()}
+
     # creating okapi-tf vectors of query and documents
-    query_vector = get_okapi_tf_vector(query_vector, len(query.split()), AVG_DOC_LEN)
-    doc_vectors = [get_okapi_tf_vector(doc_vector, DOC_LEN, AVG_DOC_LEN) for doc_vector in doc_vectors]
+    query_vector = get_okapi_tf_vector(query_vector, len(query.split()))
+    doc_vectors = [get_okapi_tf_vector(doc_vectors[i], doc_lengths[reference_to_doc[i]])
+                   for i in range(len(doc_vectors))]
+    del reference_to_doc
 
     # finding cosine similarity scores of query with documents
     query_vector_len = np.sqrt(query_vector.dot(query_vector))
@@ -100,16 +106,20 @@ def tf_tdf(query):
     query = query_preprocessing(query)
     query_vector, doc_references, doc_vectors = create_vectors(query)
 
+    reference_to_doc = {reference: int(doc) for doc, reference in doc_references.items()}
+
 
 # parser = ArgumentParser()
-# parser.add_argument('--score', dest='score', help='name of scoring function (TF or TF-IDF)', metavar='SCORE', required=True)
+# parser.add_argument('--score', dest='score', help='name of scoring function (TF or TF-IDF)',
+#                     metavar='SCORE', required=True)
 # options = parser.parse_args()
 # score_function = options.score.lower()
 # if score_function != 'tf-idf' and score_function != 'tf':
 #     print('Please select valid score function')
 #     exit(-1)
 
-doc_ids = pd.read_csv('docids.txt', sep='\t', dtype=str, header=None, index_col=1).to_dict()[0]
+doc_ids = pd.read_csv('docids.txt', sep='\t', dtype=str, header=None, index_col=0).to_dict()[1]
+doc_lengths = pd.read_csv('doc_lengths.txt', sep='\t', dtype=int, header=None, index_col=0).to_dict()[1]
 term_ids = pd.read_csv('termids.txt', sep='\t', dtype=str, header=None, index_col=1).to_dict()[0]
 term_info = pd.read_csv('term_info.txt', sep='\t', dtype=str, header=None, names=(OFFSET, FREQUENCY, DOC_OCCURRENCES),
                         index_col=0)
@@ -120,6 +130,8 @@ with open('topics.xml') as f:
 
 with open('stoplist.txt') as f:
     stop_words = f.read().split('\n')
+
+AVG_DOC_LEN = statistics.mean(doc_lengths.values())
 
 stemmer = PorterStemmer()
 stop_words = set(stop_words + [stemmer.stem(stop_word) for stop_word in stop_words])
