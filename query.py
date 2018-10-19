@@ -129,7 +129,9 @@ def okapi_bm25(query):
     df = np.array([int(term_info.loc[feature, DOC_OCCURRENCES]) for feature in features])
     log_d_by_df = np.log10((DOC_COUNT + 0.5) / (df + 0.5))
 
-    scores = {doc: log_d_by_df for doc, doc_vectors in doc_vectors.items()}
+    # k1 * (1 - b + b * doc_lengths[int(doc)] / AVG_DOC_LEN is K
+    return {doc: np.sum(log_d_by_df * ((1 + k1) * doc_vector / (k1 * (1 - b + b * doc_lengths[int(doc)] / AVG_DOC_LEN) + doc_vector)) * ((1 + k2) * query_vector) / (k2 + query_vector))
+            for doc, doc_vector in doc_vectors.items()}
 
 
 def jelinek_mercer_smoothing(query):
@@ -176,12 +178,12 @@ regex = re.compile('[^a-z0-9 ]')
 topics = BeautifulSoup(topics, features='html5lib').find_all('topic')
 topics = [(topic['number'], query_preprocessing(topic.find('query').getText())) for topic in topics]
 
-score_function = okapi_tf
+score_function = okapi_bm25
 for number, topic in topics:
     document_scores = score_function(topic)
     doc_score_pairs = [(doc_ids[int(doc)], score) for doc, score in document_scores.items()]
     doc_score_pairs.sort(key=itemgetter(1), reverse=True)
     for rank, doc_score_pair in enumerate(doc_score_pairs):
-        print(number, 0, doc_score_pair[0], rank + 1, doc_score_pair[1], 'run1')
+        print(number, 0, doc_score_pair[0], rank + 1, doc_score_pair[1], score_function.__name__)
 
 terms_index.close()
