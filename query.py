@@ -7,14 +7,17 @@ import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from itertools import islice
 import statistics
-import time
+from operator import itemgetter
 
 OFFSET = 'Offset'
 FREQUENCY = 'Frequency'
 DOC_OCCURRENCES = 'Document Occurrences'
+
 k1 = 1.2
 k2 = 500
-b = 0.9
+b = 0.75
+
+gamma = 0.6
 
 
 def get_term_posting(term):
@@ -80,63 +83,72 @@ def create_count_vectors(query):
 
     # creating count vector of documents
     documents_vectors = vectorizer.transform(documents).toarray()
+    documents_vectors = {doc: documents_vectors[index] for doc, index in doc_references.items()}
 
-    return query_vector, doc_references, documents_vectors, features
+    return query_vector, documents_vectors, features
 
 
 def get_okapi_tf_vector(vector, doc_len): return vector / (vector + 0.5 + 1.5 * doc_len / AVG_DOC_LEN)
 
 
-def get_okapi_tf_idf_vector(vector, doc_len, log_d_by_df): return get_okapi_tf_vector(vector, doc_len) * log_d_by_df
-
-
 def okapi_tf(query):
-    query_vector, doc_references, doc_vectors, features = create_count_vectors(query)
-    reference_to_doc = {reference: int(doc) for doc, reference in doc_references.items()}
+    query_vector, doc_vectors, features = create_count_vectors(query)
 
     # creating okapi-tf vectors of query and documents
     query_vector = get_okapi_tf_vector(query_vector, len(query.split()))
-    doc_vectors = [get_okapi_tf_vector(doc_vectors[i], doc_lengths[reference_to_doc[i]])
-                   for i in range(len(doc_vectors))]
+    doc_vectors = {doc: get_okapi_tf_vector(doc_vector, doc_lengths[doc]) for doc, doc_vector in doc_vectors.items()}
 
     # finding cosine similarity scores of query with documents
     query_vector_len = np.sqrt(query_vector.dot(query_vector))
-    doc_scores = [query_vector.dot(doc_vector) / (query_vector_len * np.sqrt(doc_vector.dot(doc_vector)))
-                  for doc_vector in doc_vectors]
-
-    return doc_references, doc_scores
+    return {doc: query_vector.dot(doc_vector) / (query_vector_len * np.sqrt(doc_vector.dot(doc_vector)))
+            for doc, doc_vector in doc_vectors.items()}
 
 
 def okapi_tf_idf(query):
-    query_vector, doc_references, doc_vectors, features = create_count_vectors(query)
-    reference_to_doc = {reference: int(doc) for doc, reference in doc_references.items()}
+    query_vector, doc_vectors, features = create_count_vectors(query)
 
+    # log_d_by_df is log(D / df(i)) of feature
     df = np.array([int(term_info.loc[feature, DOC_OCCURRENCES]) for feature in features])
     log_d_by_df = np.log10(DOC_COUNT / df)
 
     # creating okapi-tf vectors of query and documents
-    query_vector = get_okapi_tf_idf_vector(query_vector, len(query.split()), log_d_by_df)
-    doc_vectors = [get_okapi_tf_idf_vector(doc_vectors[i], doc_lengths[reference_to_doc[i]], log_d_by_df)
-                   for i in range(len(doc_vectors))]
-    del reference_to_doc
+    query_vector = get_okapi_tf_vector(query_vector, len(query.split())) * log_d_by_df
+    doc_vectors = {doc: get_okapi_tf_vector(doc_vector, doc_lengths[int(doc)]) * log_d_by_df
+                   for doc, doc_vector in doc_vectors.items()}
 
     # finding cosine similarity scores of query with documents
     query_vector_len = np.sqrt(query_vector.dot(query_vector))
-    doc_scores = [query_vector.dot(doc_vector) / (query_vector_len * np.sqrt(doc_vector.dot(doc_vector)))
-                  for doc_vector in doc_vectors]
+    return {doc: query_vector.dot(doc_vector) / (query_vector_len * np.sqrt(doc_vector.dot(doc_vector)))
+            for doc, doc_vector in doc_vectors.items()}
 
-    return doc_references, doc_scores
+
+def okapi_bm25(query):
+    query_vector, doc_vectors, features = create_count_vectors(query)
+
+    # log_d_by_df is log((D + 0.5) / df(i) + 0.5) of features
+    df = np.array([int(term_info.loc[feature, DOC_OCCURRENCES]) for feature in features])
+    log_d_by_df = np.log10((DOC_COUNT + 0.5) / (df + 0.5))
+
+    scores = {doc: log_d_by_df for doc, doc_vectors in doc_vectors.items()}
+
+
+def jelinek_mercer_smoothing(query):
+    query_vector, doc_vectors, features = create_count_vectors(query)
 
 
 # parser = ArgumentParser()
 # parser.add_argument('--score', dest='score', help='name of scoring function (TF or TF-IDF)',
 #                     metavar='SCORE', required=True)
 # options = parser.parse_args()
-# score_function = options.score.lower()
-# if score_function == 'tf':
+# score_function = options.score.upper()
+# if score_function == 'TF':
 #     score_function = okapi_tf
-# elif score_function == 'tf-idf':
+# elif score_function == 'TF-IDF':
 #     score_function = okapi_tf_idf
+# elif score_function == 'BM25':
+#     score_function = okapi_bm25
+# elif score_function == 'JM':
+#     score_function = jelinek_mercer_smoothing
 # else:
 #     print('Please select valid score function')
 #     exit(-1)
@@ -155,7 +167,8 @@ with open('stoplist.txt') as f:
     stop_words = f.read().split('\n')
 
 AVG_DOC_LEN = statistics.mean(doc_lengths.values())
-DOC_COUNT = len(doc_ids)
+DOC_COUNT = len(doc_lengths)
+DOC_LEN_SUM = AVG_DOC_LEN * DOC_COUNT
 
 stemmer = PorterStemmer()
 stop_words = set(stop_words + [stemmer.stem(stop_word) for stop_word in stop_words])
@@ -163,7 +176,12 @@ regex = re.compile('[^a-z0-9 ]')
 topics = BeautifulSoup(topics, features='html5lib').find_all('topic')
 topics = [(topic['number'], query_preprocessing(topic.find('query').getText())) for topic in topics]
 
-# for number, topic in topics:
-#     score_function(topic)
+score_function = okapi_tf
+for number, topic in topics:
+    document_scores = score_function(topic)
+    doc_score_pairs = [(doc_ids[int(doc)], score) for doc, score in document_scores.items()]
+    doc_score_pairs.sort(key=itemgetter(1), reverse=True)
+    for rank, doc_score_pair in enumerate(doc_score_pairs):
+        print(number, 0, doc_score_pair[0], rank + 1, doc_score_pair[1], 'run1')
 
 terms_index.close()
