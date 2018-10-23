@@ -70,6 +70,7 @@ terms = set()
 stemmer = PorterStemmer()
 regex = re.compile('[^a-z0-9 ]')
 stop_words = set(stop_words + [stemmer.stem(stop_word) for stop_word in stop_words])
+stop_words.add('')
 for i, html in enumerate(data):
     # get text from html
     try:
@@ -86,12 +87,13 @@ for i, html in enumerate(data):
         continue
 
     # tokenize, stem, remove stop-words
-    tokens = regex.sub('', text).split()
-    for j, token in enumerate(tokens):
-        tokens[j] = stemmer.stem(token)
-    filtered_tokens = [token for token in tokens if token not in stop_words]
-    for filtered_token in filtered_tokens:
-        terms.add(filtered_token)
+    tokens = re.split('\W+', text)
+    filtered_tokens = [token for token in
+                       [stemmer.stem(token) for token in tokens]
+                       if token not in stop_words]
+
+    # adding newly found words to unique terms set
+    terms |= set(filtered_tokens)
 
     data[i] = filtered_tokens
 
@@ -110,7 +112,7 @@ terms = sorted(terms)
 # create termids.txt file #############################################################################################
 print('\nCreating Files.')
 to_write = '\n'.join([str(i + 1) + '\t' + term for i, term in enumerate(terms)])
-with open('termids.txt', 'w', encoding='cp1252') as termID:
+with open('termids.txt', 'w', encoding='utf8') as termID:
     termID.write(to_write)
     print('termids.txt created.')
 

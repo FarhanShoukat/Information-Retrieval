@@ -32,7 +32,7 @@ def get_term_posting(term):
 def query_preprocessing(query):
     # lowered, tokenized, stemmed, stop words removed
     query = [term for term in
-             [stemmer.stem(term) for term in regex.sub('', query.lower()).split()]
+             [stemmer.stem(term) for term in re.split('\W+', query.lower())]
              if term not in stop_words]
 
     # each term is converted to its id
@@ -164,7 +164,7 @@ else:
 
 doc_ids = pd.read_csv('docids.txt', sep='\t', dtype=str, header=None, index_col=0).to_dict()[1]
 doc_lengths = pd.read_csv('doc_lengths.txt', sep='\t', dtype=int, header=None, index_col=0).to_dict()[1]
-term_ids = pd.read_csv('termids.txt', sep='\t', dtype=str, header=None, index_col=1).to_dict()[0]
+term_ids = pd.read_csv('termids.txt', encoding='utf8', sep='\t', dtype=str, header=None, index_col=1).to_dict()[0]
 term_info = pd.read_csv('term_info.txt', sep='\t', dtype=str, header=None, names=(OFFSET, FREQUENCY, DOC_OCCURRENCES),
                         index_col=0)
 terms_index = open('term_index.txt', encoding='cp1252')
@@ -181,7 +181,7 @@ DOC_LEN_SUM = AVG_DOC_LEN * DOC_COUNT
 
 stemmer = PorterStemmer()
 stop_words = set(stop_words + [stemmer.stem(stop_word) for stop_word in stop_words])
-regex = re.compile('[^a-z0-9 ]')
+stop_words.add('')
 topics = BeautifulSoup(topics, features='html5lib').find_all('topic')
 topics = [(topic['number'], query_preprocessing(topic.find('query').getText())) for topic in topics]
 
