@@ -96,7 +96,8 @@ def okapi_tf(query):
 
     # creating okapi-tf vectors of query and documents
     query_vector = get_okapi_tf_vector(query_vector, len(query.split()))
-    doc_vectors = {doc: get_okapi_tf_vector(doc_vector, doc_lengths[doc]) for doc, doc_vector in doc_vectors.items()}
+    doc_vectors = {doc: get_okapi_tf_vector(doc_vector, doc_lengths[int(doc)])
+                   for doc, doc_vector in doc_vectors.items()}
 
     # finding cosine similarity scores of query with documents
     query_vector_len = np.sqrt(query_vector.dot(query_vector))
@@ -137,23 +138,29 @@ def okapi_bm25(query):
 def jelinek_mercer_smoothing(query):
     query_vector, doc_vectors, features = create_count_vectors(query)
 
+    # e_tf = summation d tf(d, i) of all terms under consideration
+    e_tf = np.array([int(term_info.loc[feature, FREQUENCY]) for feature in features])
 
-# parser = ArgumentParser()
-# parser.add_argument('--score', dest='score', help='name of scoring function (TF or TF-IDF)',
-#                     metavar='SCORE', required=True)
-# options = parser.parse_args()
-# score_function = options.score.upper()
-# if score_function == 'TF':
-#     score_function = okapi_tf
-# elif score_function == 'TF-IDF':
-#     score_function = okapi_tf_idf
-# elif score_function == 'BM25':
-#     score_function = okapi_bm25
-# elif score_function == 'JM':
-#     score_function = jelinek_mercer_smoothing
-# else:
-#     print('Please select valid score function')
-#     exit(-1)
+    return {doc: np.prod(gamma * doc_vector / doc_lengths[int(doc)] + (1 - gamma) * e_tf / DOC_LEN_SUM)
+            for doc, doc_vector in doc_vectors.items()}
+
+
+parser = ArgumentParser()
+parser.add_argument('--score', dest='score', help='name of scoring function (TF or TF-IDF)',
+                    metavar='SCORE', required=True)
+options = parser.parse_args()
+score_function = options.score.upper()
+if score_function == 'TF':
+    score_function = okapi_tf
+elif score_function == 'TF-IDF':
+    score_function = okapi_tf_idf
+elif score_function == 'BM25':
+    score_function = okapi_bm25
+elif score_function == 'JM':
+    score_function = jelinek_mercer_smoothing
+else:
+    print('Please select valid score function')
+    exit(-1)
 
 doc_ids = pd.read_csv('docids.txt', sep='\t', dtype=str, header=None, index_col=0).to_dict()[1]
 doc_lengths = pd.read_csv('doc_lengths.txt', sep='\t', dtype=int, header=None, index_col=0).to_dict()[1]
@@ -178,7 +185,6 @@ regex = re.compile('[^a-z0-9 ]')
 topics = BeautifulSoup(topics, features='html5lib').find_all('topic')
 topics = [(topic['number'], query_preprocessing(topic.find('query').getText())) for topic in topics]
 
-score_function = okapi_bm25
 for number, topic in topics:
     document_scores = score_function(topic)
     doc_score_pairs = [(doc_ids[int(doc)], score) for doc, score in document_scores.items()]
