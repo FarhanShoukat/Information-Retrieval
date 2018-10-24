@@ -68,8 +68,7 @@ print('\nParsing and Pre-processing Data.')
 not_read.clear()
 terms = set()
 stemmer = PorterStemmer()
-regex = re.compile('[^a-z0-9 ]')
-stop_words = set(stop_words + [stemmer.stem(stop_word) for stop_word in stop_words])
+stop_words = set(stop_words + [stemmer.stem(stop_word) for stop_word in stop_words]) | {'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'}
 stop_words.add('')
 for i, html in enumerate(data):
     # get text from html
@@ -87,9 +86,8 @@ for i, html in enumerate(data):
         continue
 
     # tokenize, stem, remove stop-words
-    tokens = re.split('\W+', text)
     filtered_tokens = [token for token in
-                       [stemmer.stem(token) for token in tokens]
+                       [stemmer.stem(token) for token in re.split('\W+', text)]
                        if token not in stop_words]
 
     # adding newly found words to unique terms set

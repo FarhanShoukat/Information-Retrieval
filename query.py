@@ -180,7 +180,7 @@ DOC_COUNT = len(doc_lengths)
 DOC_LEN_SUM = AVG_DOC_LEN * DOC_COUNT
 
 stemmer = PorterStemmer()
-stop_words = set(stop_words + [stemmer.stem(stop_word) for stop_word in stop_words])
+stop_words = set(stop_words + [stemmer.stem(stop_word) for stop_word in stop_words]) | {'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'}
 stop_words.add('')
 topics = BeautifulSoup(topics, features='html5lib').find_all('topic')
 topics = [(topic['number'], query_preprocessing(topic.find('query').getText())) for topic in topics]
