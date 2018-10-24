@@ -53,37 +53,23 @@ def create_count_vectors(query):
     query_vector = vectorizer.fit_transform([query]).toarray()[0]
     features = vectorizer.get_feature_names()
 
-    documents = {}
-    for term in features:
-        term_posting = get_term_posting(term)
+    documents_vectors = {}
+    for index, feature in enumerate(features):
+        term_posting = get_term_posting(feature)
 
-        # adding first position of posting list to respective document
         try:
-            documents[str(term_posting[0, 0])].append(term)
+            documents_vectors[str(term_posting[0, 0])][index] += 1
         except KeyError:
-            documents[str(term_posting[0, 0])] = [term]
+            documents_vectors[str(term_posting[0, 0])] = np.zeros(len(features), dtype=np.int64)
+            documents_vectors[str(term_posting[0, 0])][index] = 1
 
-        # delta decoding and adding terms to respective document list
         for i in range(1, len(term_posting)):
-            # if term_posting[i, 0] == 0:
-            #     term_posting[i, 1] += term_posting[i - 1, 1]
             term_posting[i, 0] += term_posting[i - 1, 0]
             try:
-                documents[str(term_posting[i, 0])].append(term)
+                documents_vectors[str(term_posting[i, 0])][index] += 1
             except KeyError:
-                documents[str(term_posting[i, 0])] = [term]
-
-    # joining lists of documents containing term ids and converting dictionary to list for vectorizer
-    doc_references = {}
-    d = []
-    for i, key in enumerate(documents):
-        d.append(' '.join(documents[key]))
-        doc_references[key] = i
-    documents = d
-
-    # creating count vector of documents
-    documents_vectors = vectorizer.transform(documents).toarray()
-    documents_vectors = {doc: documents_vectors[index] for doc, index in doc_references.items()}
+                documents_vectors[str(term_posting[i, 0])] = np.zeros(len(features), dtype=np.int64)
+                documents_vectors[str(term_posting[i, 0])][index] = 1
 
     return query_vector, documents_vectors, features
 
