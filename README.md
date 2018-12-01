@@ -22,7 +22,7 @@ Files should be run in the following order
 * creates doc_lengths.txt
 
 ### query.py
-* ./query.py --score <score function>
+* ./query.py --score <score function> --query <search query>
 * available score functions: TF, TF-IDF, BM25, JM
 * uses docids.txt, termids.txt, stoplist.txt, term_index.txt, doc_lengths.txt
 
