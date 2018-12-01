@@ -4,7 +4,6 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import re
 import numpy as np
-from sklearn.feature_extraction.text import CountVectorizer
 from itertools import islice
 import statistics
 from operator import itemgetter
@@ -18,6 +17,9 @@ k2 = 500
 b = 0.75
 
 gamma = 0.6
+
+
+########################################################################################################################
 
 
 def get_term_posting(term):
@@ -42,16 +44,15 @@ def query_preprocessing(query):
             q.append(term_ids[term])
         except KeyError:
             pass
-    return ' '.join(q)
+    return q
 
 
-# create count vectors of query and documents related to query
+########################################################################################################################
+
+
 def create_count_vectors(query):
-    vectorizer = CountVectorizer()
-
-    # creating count vector of query
-    query_vector = vectorizer.fit_transform([query]).toarray()[0]
-    features = vectorizer.get_feature_names()
+    features = list(set(query))
+    query_vector = np.ones(len(features), np.int64)
 
     documents_vectors = {}
     for index, feature in enumerate(features):
@@ -77,11 +78,14 @@ def create_count_vectors(query):
 def get_okapi_tf_vector(vector, doc_len): return vector / (vector + 0.5 + 1.5 * doc_len / AVG_DOC_LEN)
 
 
+########################################################################################################################
+
+
 def okapi_tf(query):
     query_vector, doc_vectors, features = create_count_vectors(query)
 
     # creating okapi-tf vectors of query and documents
-    query_vector = get_okapi_tf_vector(query_vector, len(query.split()))
+    query_vector = get_okapi_tf_vector(query_vector, np.sum(query_vector))
     doc_vectors = {doc: get_okapi_tf_vector(doc_vector, doc_lengths[int(doc)])
                    for doc, doc_vector in doc_vectors.items()}
 
@@ -99,7 +103,7 @@ def okapi_tf_idf(query):
     log_d_by_df = np.log10(DOC_COUNT / df)
 
     # creating okapi-tf vectors of query and documents
-    query_vector = get_okapi_tf_vector(query_vector, len(query.split())) * log_d_by_df
+    query_vector = get_okapi_tf_vector(query_vector, np.sum(query_vector)) * log_d_by_df
     doc_vectors = {doc: get_okapi_tf_vector(doc_vector, doc_lengths[int(doc)]) * log_d_by_df
                    for doc, doc_vector in doc_vectors.items()}
 
@@ -129,6 +133,9 @@ def jelinek_mercer_smoothing(query):
 
     return {doc: np.prod(gamma * doc_vector / doc_lengths[int(doc)] + (1 - gamma) * e_tf / DOC_LEN_SUM)
             for doc, doc_vector in doc_vectors.items()}
+
+
+########################################################################################################################
 
 
 parser = ArgumentParser()
