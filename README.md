@@ -7,22 +7,22 @@ In this project, a parser and an inverter was made to parse HTML pages and creat
 Files should be run in the following order
 
 ### parser.py
-* ./parser.py \<folder containing HTML files\>
+* python parser.py \<folder containing HTML files\>
 * uses stoplist.txt, files in folder (contains HTML files) provided while execution
 * creates docids.txt, termids.txt, doc_index.txt
 
 ### inverter.py
-* ./inverter.py
+* python inverter.py
 * uses docids.txt, termids.txt, doc_index.txt
 * creates term_info.txt, term_index.txt
 
 ### docLengthCalculator.py
-* ./docLengthCalculator.py
+* python docLengthCalculator.py
 * uses doc_index.txt
 * creates doc_lengths.txt
 
 ### query.py
-* ./query.py --score \<score function\> --query \<search query\>
+* python query.py --score \<score function\> --query \<search query\>
 * available score functions: TF, TF-IDF, BM25, JM
 * uses docids.txt, termids.txt, stoplist.txt, term_index.txt, doc_lengths.txt
 
