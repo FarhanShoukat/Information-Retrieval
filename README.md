@@ -12,7 +12,7 @@ Files should be run in the following order
 * creates docids.txt, termids.txt, doc_index.txt
 
 ### inverter.py
-* ./nverter.py
+* ./inverter.py
 * uses docids.txt, termids.txt, doc_index.txt
 * creates term_info.txt, term_index.txt
 
