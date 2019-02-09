@@ -28,7 +28,7 @@ Files should be run in the following order
 
 
 ## Contact
-You can get in touch with me on my LinkedIn Profile: [Farhan Shoukat](https://www.linkedin.com/in/farhan-shoukat-782542167/)
+You can get in touch with me on my LinkedIn Profile: [Farhan Shoukat](https://www.linkedin.com/in/farhan-shoukat/)
 
 
 ## License
